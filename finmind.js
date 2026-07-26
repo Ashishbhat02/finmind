@@ -68,19 +68,29 @@ function fmtDate(iso) { const d = new Date(iso + 'T00:00:00'); return d.getDate(
 function fmtDateFull(iso) { const d = new Date(iso + 'T00:00:00'); return d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear() }
 
 /* ── MODAL ── */
-function openModal() {
+let editingExpenseId = null;
+function openModal(id) {
+    editingExpenseId = (id !== undefined && id !== null) ? id : null;
+    const existing = editingExpenseId !== null ? state.expenses.find(e => e.id === editingExpenseId) : null;
+
+    document.getElementById('modalTitle').textContent = existing ? 'Edit expense' : 'Add new expense';
+    document.getElementById('saveBtnText').textContent = existing ? 'Save changes' : 'Save expense';
+
     document.getElementById('modalOverlay').classList.add('open');
-    document.getElementById('expName').value = '';
-    document.getElementById('expAmount').value = '';
-    document.getElementById('expDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('expName').value = existing ? existing.name : '';
+    document.getElementById('expAmount').value = existing ? existing.amount : '';
+    document.getElementById('expDate').value = existing ? existing.date : new Date().toISOString().split('T')[0];
     document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('sel'));
-    document.querySelector('.cat-chip[data-cat="food"]').classList.add('sel');
+    const catToSelect = existing ? existing.cat : 'food';
+    const chip = document.querySelector(`.cat-chip[data-cat="${catToSelect}"]`) || document.querySelector('.cat-chip[data-cat="food"]');
+    if (chip) chip.classList.add('sel');
     setTimeout(() => document.getElementById('expName').focus(), 50);
 }
-function closeModal() { document.getElementById('modalOverlay').classList.remove('open') }
+function editExpense(id) { openModal(id) }
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); editingExpenseId = null }
 function selectCat(el) { document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('sel')); el.classList.add('sel') }
 
-/* ── SAVE EXPENSE ── */
+/* ── SAVE EXPENSE (handles both add and edit) ── */
 function saveExpense() {
     const name = document.getElementById('expName').value.trim();
     const amount = parseFloat(document.getElementById('expAmount').value);
@@ -91,8 +101,19 @@ function saveExpense() {
     if (!amount || amount <= 0) { shake('expAmount'); return }
     if (!date) { shake('expDate'); return }
     const d = new Date(date + 'T00:00:00');
-    state.expenses.unshift({ id: Date.now(), name, amount, date, cat, monthKey: monthKey(d.getFullYear(), d.getMonth()) });
-    save(); closeModal(); render(); showToast('Expense saved');
+    const mKey = monthKey(d.getFullYear(), d.getMonth());
+
+    if (editingExpenseId !== null) {
+        const idx = state.expenses.findIndex(e => e.id === editingExpenseId);
+        if (idx > -1) {
+            state.expenses[idx] = { ...state.expenses[idx], name, amount, date, cat, monthKey: mKey };
+        }
+        editingExpenseId = null;
+        save(); closeModal(); render(); showToast('Expense updated');
+    } else {
+        state.expenses.unshift({ id: Date.now(), name, amount, date, cat, monthKey: mKey });
+        save(); closeModal(); render(); showToast('Expense saved');
+    }
 }
 function shake(id) {
     const el = document.getElementById(id);
@@ -150,7 +171,10 @@ function expRowHTML(e) {
     <div class="et-cat"><span class="cat-pill ${catClass}">${getCategoryLabel(e.cat)}</span></div>
     <div class="et-date">${fmtDateFull(e.date)}</div>
     <div class="et-amt">${fmt(e.amount)}</div>
-    <div class="et-del" onclick="deleteExpense(${e.id})">
+    <div class="et-edit" onclick="editExpense(${e.id})" title="Edit">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    </div>
+    <div class="et-del" onclick="deleteExpense(${e.id})" title="Delete">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
     </div>
   </div>`;
@@ -272,7 +296,7 @@ function renderCharts() {
         dayTotals[d] = (dayTotals[d] || 0) + e.amount;
     });
     const catColors = { food: '#1D9E75', transport: '#378ADD', bills: '#7F77DD', shopping: '#D85A30', health: '#D4537E', education: '#639922', fun: '#BA7517', other: '#888780' };
-    const isDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+    const isDark = isDarkMode();
     const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
     const textColor = isDark ? '#8EA89A' : '#555E59';
 
@@ -378,6 +402,49 @@ function exportCSV() {
     showToast('CSV exported');
 }
 
+/* ── THEME (auto light/dark + manual toggle) ── */
+const THEME_KEY = 'finmind_theme'; // 'light' | 'dark' | absent = auto (follows OS)
+const SUN_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+const MOON_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+
+function isDarkMode() {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === 'dark') return true;
+    if (stored === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme:dark)').matches; // auto
+}
+function updateThemeIcon() {
+    const dark = isDarkMode();
+    const icon = dark ? SUN_ICON : MOON_ICON; // icon shown = action you'll trigger next tap
+    const s = document.getElementById('themeToggleSidebar');
+    const t = document.getElementById('themeToggleTopbar');
+    if (s) s.innerHTML = icon;
+    if (t) t.innerHTML = icon;
+}
+function applyTheme(theme) {
+    // theme: 'light' | 'dark' | null (null = auto, removes override)
+    if (theme) document.documentElement.setAttribute('data-theme', theme);
+    else document.documentElement.removeAttribute('data-theme');
+    updateThemeIcon();
+    if (document.getElementById('page-analytics').classList.contains('active')) renderCharts();
+}
+function toggleTheme() {
+    const next = isDarkMode() ? 'light' : 'dark';
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+    showToast(next === 'dark' ? 'Dark mode on' : 'Light mode on');
+}
+function initTheme() {
+    const stored = localStorage.getItem(THEME_KEY);
+    applyTheme(stored || null);
+    // If user hasn't manually chosen, keep following OS changes live
+    if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => {
+            if (!localStorage.getItem(THEME_KEY)) applyTheme(null);
+        });
+    }
+}
+
 /* ── PWA ── */
 if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { })) }
 let deferredPrompt = null;
@@ -405,3 +472,4 @@ function render() {
 load();
 buildCatGrid();
 render();
+initTheme();
