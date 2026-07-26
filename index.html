@@ -15,9 +15,26 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="finmind.css">
 </head>
 <body>
+
+<!-- AUTH OVERLAY -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <div class="logo-icon" style="width:40px;height:40px;border-radius:11px;margin:0 auto 14px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/><circle cx="16" cy="14" r="2" fill="#fff" stroke="none"/></svg>
+    </div>
+    <div class="auth-title" id="authTitle">Welcome back</div>
+    <div class="auth-sub" id="authSub">Sign in to your FinMind account</div>
+    <div class="auth-error" id="authError" style="display:none"></div>
+    <div class="field"><label>Email</label><input type="email" id="authEmail" autocomplete="email" placeholder="you@example.com"></div>
+    <div class="field"><label>Password</label><input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••"></div>
+    <button class="btn-save" id="authSubmitBtn" style="width:100%;justify-content:center" onclick="handleAuthSubmit()">Sign in</button>
+    <div class="auth-switch" id="authSwitchText">Don't have an account? <span onclick="toggleAuthMode()">Create one</span></div>
+  </div>
+</div>
 
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
@@ -57,6 +74,10 @@
     </div>
   </div>
   <div class="sidebar-bottom">
+    <div class="account-row">
+      <span class="account-email" id="userEmailLabel"></span>
+      <button class="account-signout" onclick="signOut()">Sign out</button>
+    </div>
     <div class="month-switcher">
       <span class="month-label" id="monthLabel">June 2026</span>
       <div class="month-nav-btns">
@@ -324,6 +345,7 @@
   </button>
 </div>
 
+<script src="config.js"></script>
 <script src="finmind.js"></script>
 </body>
 </html>

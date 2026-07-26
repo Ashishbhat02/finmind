@@ -54,6 +54,23 @@ body,.sidebar,.topbar,.card,.stat-card,.chart-card,.modal,.confirm-box,.et-row,.
 .theme-toggle svg{display:block}
 .sidebar-theme-row{display:flex;align-items:center;justify-content:space-between;padding:9px 10px;border-radius:var(--radius-sm);font-size:13px;color:var(--text-2)}
 
+/* AUTH SCREEN */
+.auth-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:300;align-items:center;justify-content:center;padding:20px}
+.auth-overlay.open{display:flex}
+.auth-box{width:100%;max-width:340px;background:var(--surface);border:0.5px solid var(--border-md);border-radius:var(--radius-lg);padding:28px 24px;text-align:center}
+.auth-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px}
+.auth-sub{font-size:12px;color:var(--text-2);margin-bottom:18px}
+.auth-box .field{text-align:left;margin-bottom:14px}
+.auth-error{font-size:12px;color:var(--danger);background:var(--danger-bg);padding:8px 10px;border-radius:8px;margin-bottom:14px;text-align:left}
+.auth-switch{font-size:12px;color:var(--text-2);margin-top:16px}
+.auth-switch span{color:var(--green-dark);font-weight:600;cursor:pointer}
+
+/* ACCOUNT ROW (sidebar) */
+.account-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 2px 8px}
+.account-email{font-size:11px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px}
+.account-signout{font-size:11px;font-weight:600;color:var(--text-3);background:transparent;border:none;cursor:pointer;text-decoration:underline;text-underline-offset:2px;font-family:inherit;flex-shrink:0}
+.account-signout:hover{color:var(--danger)}
+
 /* MAIN */
 .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
 .main-header{background:var(--surface);border-bottom:0.5px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}

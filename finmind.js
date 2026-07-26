@@ -1,5 +1,14 @@
+/* ── SUPABASE CONFIG ── */
+/* Credentials come from config.js (generated at build time from Netlify's
+   environment variables) so they never live directly in this file or in git. */
+const SUPABASE_URL = window.SUPABASE_URL;
+const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY;
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+let authMode = 'signin'; // 'signin' | 'signup'
+
 /* ── DATA ── */
-const STORAGE_KEY = 'finmind_v1';
 let state = { expenses: [], budgets: { total: 0, food: 0, transport: 0, bills: 0, shopping: 0, health: 0, education: 0, fun: 0, other: 0 }, customCategories: [], currentMonth: new Date().getMonth(), currentYear: new Date().getFullYear() };
 
 const CAT_LABELS = { food: 'Food', transport: 'Transport', bills: 'Bills', shopping: 'Shopping', health: 'Health', education: 'Education', fun: 'Fun', other: 'Other' };
@@ -8,12 +17,91 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 let doughnutChart = null, barChart = null, activeFilter = 'all', activeFilterPage = 'all';
 
-/* ── PERSIST ── */
-function save() { state.customCategories = state.customCategories || []; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) }
+/* ── CLOUD SYNC ── */
 function ensureBudgetEntries() {
     const baseBudgets = { total: 0, food: 0, transport: 0, bills: 0, shopping: 0, health: 0, education: 0, fun: 0, other: 0 };
     state.budgets = { ...baseBudgets, ...(state.budgets || {}) };
     (state.customCategories || []).forEach(c => { if (state.budgets[c.key] === undefined) state.budgets[c.key] = 0; });
+}
+async function loadCloudData() {
+    const [{ data: expenses, error: expErr }, { data: settingsRow, error: setErr }] = await Promise.all([
+        sb.from('expenses').select('*').order('date', { ascending: false }),
+        sb.from('settings').select('*').eq('user_id', currentUser.id).maybeSingle()
+    ]);
+    if (expErr) { console.error(expErr); showToast('Could not load expenses'); }
+    if (setErr) { console.error(setErr); }
+
+    state.expenses = (expenses || []).map(e => ({ id: Number(e.id), name: e.name, amount: Number(e.amount), date: e.date, cat: e.cat, monthKey: e.month_key }));
+
+    if (settingsRow) {
+        state.budgets = { ...state.budgets, ...(settingsRow.budgets || {}) };
+        state.customCategories = settingsRow.custom_categories || [];
+    } else {
+        state.customCategories = [];
+        await sb.from('settings').insert({ user_id: currentUser.id, budgets: state.budgets, custom_categories: [] });
+    }
+    ensureBudgetEntries();
+    buildCatGrid();
+    render();
+}
+async function syncSettings() {
+    const { error } = await sb.from('settings').upsert({ user_id: currentUser.id, budgets: state.budgets, custom_categories: state.customCategories, updated_at: new Date().toISOString() });
+    if (error) { console.error(error); showToast('Could not save settings'); }
+}
+
+/* ── AUTH ── */
+function toggleAuthMode() {
+    authMode = authMode === 'signin' ? 'signup' : 'signin';
+    document.getElementById('authTitle').textContent = authMode === 'signin' ? 'Welcome back' : 'Create your account';
+    document.getElementById('authSub').textContent = authMode === 'signin' ? 'Sign in to your FinMind account' : 'Start tracking your budget';
+    document.getElementById('authSubmitBtn').textContent = authMode === 'signin' ? 'Sign in' : 'Create account';
+    document.getElementById('authSwitchText').innerHTML = authMode === 'signin'
+        ? `Don't have an account? <span onclick="toggleAuthMode()">Create one</span>`
+        : `Already have an account? <span onclick="toggleAuthMode()">Sign in</span>`;
+    document.getElementById('authError').style.display = 'none';
+}
+async function handleAuthSubmit() {
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const errEl = document.getElementById('authError');
+    errEl.style.display = 'none';
+    if (!email || !password) { errEl.textContent = 'Enter both email and password.'; errEl.style.display = 'block'; return }
+    const btn = document.getElementById('authSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Please wait…';
+    try {
+        const result = authMode === 'signin'
+            ? await sb.auth.signInWithPassword({ email, password })
+            : await sb.auth.signUp({ email, password });
+        if (result.error) throw result.error;
+        if (authMode === 'signup' && !result.data.session) {
+            errEl.style.color = 'var(--green-dark)'; errEl.style.background = 'var(--green-light)';
+            errEl.textContent = 'Account created! Check your email to confirm, then sign in.';
+            errEl.style.display = 'block';
+            authMode = 'signup'; toggleAuthMode(); // flips back to signin labels
+            btn.disabled = false; btn.textContent = 'Sign in';
+            return;
+        }
+        await onLoggedIn(result.data.session.user);
+    } catch (e) {
+        errEl.style.color = 'var(--danger)'; errEl.style.background = 'var(--danger-bg)';
+        errEl.textContent = e.message || 'Something went wrong. Please try again.';
+        errEl.style.display = 'block';
+    }
+    btn.disabled = false; btn.textContent = authMode === 'signin' ? 'Sign in' : 'Create account';
+}
+async function onLoggedIn(user) {
+    currentUser = user;
+    document.getElementById('authOverlay').classList.remove('open');
+    document.getElementById('userEmailLabel').textContent = user.email;
+    document.getElementById('userEmailLabel').title = user.email;
+    await loadCloudData();
+}
+async function signOut() {
+    await sb.auth.signOut();
+    currentUser = null;
+    state.expenses = []; state.customCategories = [];
+    ensureBudgetEntries();
+    document.getElementById('authOverlay').classList.add('open');
 }
 function getCategoryKeys() {
     const keys = ['food', 'transport', 'bills', 'shopping', 'health', 'education', 'fun', 'other'];
@@ -38,15 +126,6 @@ function slugifyCategory(name) {
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
     return slug || 'custom';
 }
-function load() {
-    try {
-        const d = localStorage.getItem(STORAGE_KEY);
-        if (d) state = { ...state, ...JSON.parse(d) };
-    } catch (e) { }
-    state.expenses = state.expenses || [];
-    state.customCategories = state.customCategories || [];
-    ensureBudgetEntries();
-}
 
 /* ── BUILD CAT GRID ── */
 function buildCatGrid() {
@@ -59,7 +138,7 @@ function buildCatGrid() {
 
 /* ── HELPERS ── */
 function getGreeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening' }
-function changeMonth(d) { state.currentMonth += d; if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++ } if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear-- } save(); render() }
+function changeMonth(d) { state.currentMonth += d; if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++ } if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear-- } render() }
 function monthKey(y, m) { return `${y}-${String(m + 1).padStart(2, '0')}` }
 function currentMonthExpenses() { const k = monthKey(state.currentYear, state.currentMonth); return state.expenses.filter(e => e.monthKey === k) }
 function prevMonthExpenses() { let m = state.currentMonth - 1, y = state.currentYear; if (m < 0) { m = 11; y-- } return state.expenses.filter(e => e.monthKey === monthKey(y, m)) }
@@ -90,8 +169,8 @@ function editExpense(id) { openModal(id) }
 function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); editingExpenseId = null }
 function selectCat(el) { document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('sel')); el.classList.add('sel') }
 
-/* ── SAVE EXPENSE (handles both add and edit) ── */
-function saveExpense() {
+/* ── SAVE EXPENSE (handles both add and edit, writes to Supabase) ── */
+async function saveExpense() {
     const name = document.getElementById('expName').value.trim();
     const amount = parseFloat(document.getElementById('expAmount').value);
     const date = document.getElementById('expDate').value;
@@ -102,17 +181,25 @@ function saveExpense() {
     if (!date) { shake('expDate'); return }
     const d = new Date(date + 'T00:00:00');
     const mKey = monthKey(d.getFullYear(), d.getMonth());
+    const payload = { name, amount, date, cat, month_key: mKey };
+
+    const saveBtn = document.querySelector('.btn-save');
+    saveBtn.disabled = true;
 
     if (editingExpenseId !== null) {
+        const { data, error } = await sb.from('expenses').update(payload).eq('id', editingExpenseId).select().single();
+        saveBtn.disabled = false;
+        if (error) { console.error(error); showToast('Could not save changes'); return }
         const idx = state.expenses.findIndex(e => e.id === editingExpenseId);
-        if (idx > -1) {
-            state.expenses[idx] = { ...state.expenses[idx], name, amount, date, cat, monthKey: mKey };
-        }
+        if (idx > -1) state.expenses[idx] = { id: Number(data.id), name: data.name, amount: Number(data.amount), date: data.date, cat: data.cat, monthKey: data.month_key };
         editingExpenseId = null;
-        save(); closeModal(); render(); showToast('Expense updated');
+        closeModal(); render(); showToast('Expense updated');
     } else {
-        state.expenses.unshift({ id: Date.now(), name, amount, date, cat, monthKey: mKey });
-        save(); closeModal(); render(); showToast('Expense saved');
+        const { data, error } = await sb.from('expenses').insert({ ...payload, user_id: currentUser.id }).select().single();
+        saveBtn.disabled = false;
+        if (error) { console.error(error); showToast('Could not save expense'); return }
+        state.expenses.unshift({ id: Number(data.id), name: data.name, amount: Number(data.amount), date: data.date, cat: data.cat, monthKey: data.month_key });
+        closeModal(); render(); showToast('Expense saved');
     }
 }
 function shake(id) {
@@ -125,8 +212,14 @@ function shake(id) {
 let pendingDeleteId = null;
 function deleteExpense(id) { pendingDeleteId = id; document.getElementById('confirmOverlay').classList.add('open') }
 function closeConfirm() { pendingDeleteId = null; document.getElementById('confirmOverlay').classList.remove('open') }
-function confirmDelete() {
-    if (pendingDeleteId !== null) { state.expenses = state.expenses.filter(e => e.id !== pendingDeleteId); pendingDeleteId = null; save(); render(); showToast('Expense deleted') }
+async function confirmDelete() {
+    if (pendingDeleteId !== null) {
+        const idToDelete = pendingDeleteId;
+        pendingDeleteId = null;
+        const { error } = await sb.from('expenses').delete().eq('id', idToDelete);
+        if (error) { console.error(error); showToast('Could not delete expense') }
+        else { state.expenses = state.expenses.filter(e => e.id !== idToDelete); render(); showToast('Expense deleted') }
+    }
     document.getElementById('confirmOverlay').classList.remove('open');
 }
 
@@ -357,7 +450,7 @@ function renderBudgetPage() {
       <button onclick="addCustomCategoryBudget()" style="width:100%;padding:10px 16px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Add category</button>
     </div>`;
 }
-function addCustomCategoryBudget() {
+async function addCustomCategoryBudget() {
     const name = document.getElementById('customCategoryName').value.trim();
     const limit = parseFloat(document.getElementById('customCategoryBudget').value);
     if (!name) { showToast('Enter a category name'); return }
@@ -366,18 +459,19 @@ function addCustomCategoryBudget() {
     if (exists) { showToast('This category already exists'); return }
     state.customCategories.push({ key, name, emoji: '🧾' });
     state.budgets[key] = limit > 0 ? limit : 0;
-    save(); renderBudgetPage(); render(); showToast('Custom category added');
+    await syncSettings(); renderBudgetPage(); render(); showToast('Custom category added');
 }
-function saveTotalBudget() {
+async function saveTotalBudget() {
     const v = parseFloat(document.getElementById('totalBudgetInput').value);
-    state.budgets.total = v > 0 ? v : 0; save(); render(); showToast('Total budget saved');
+    state.budgets.total = v > 0 ? v : 0;
+    await syncSettings(); render(); showToast('Total budget saved');
 }
-function saveCategoryBudgets() {
+async function saveCategoryBudgets() {
     getCategoryKeys().forEach(c => {
         const v = parseFloat(document.getElementById('budget_' + c).value);
         state.budgets[c] = v > 0 ? v : 0;
     });
-    save(); render(); showToast('Category budgets saved');
+    await syncSettings(); render(); showToast('Category budgets saved');
 }
 
 /* ── HEADER ── */
@@ -469,7 +563,16 @@ function render() {
 }
 
 /* ── INIT ── */
-load();
-buildCatGrid();
-render();
-initTheme();
+async function initApp() {
+    initTheme();
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && session.user) {
+        await onLoggedIn(session.user);
+    } else {
+        document.getElementById('authOverlay').classList.add('open');
+    }
+    sb.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_OUT') document.getElementById('authOverlay').classList.add('open');
+    });
+}
+initApp();
