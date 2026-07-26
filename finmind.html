@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinMind — Personal Budget Tracker</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1D9E75">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FinMind">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="finmind.css">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="logo-area">
+    <div class="logo-icon">
+      <!-- Wallet icon SVG -->
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/><circle cx="16" cy="14" r="2" fill="#fff" stroke="none"/></svg>
+    </div>
+    <div>
+      <div class="logo-name">FinMind</div>
+      <div class="logo-sub">Personal budget tracker</div>
+    </div>
+  </div>
+  <div class="nav-area">
+    <div class="nav-item active" onclick="showPage('dashboard',this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('expenses',this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg>
+      Expenses
+    </div>
+    <div class="nav-item" onclick="showPage('analytics',this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="4" width="4" height="17" rx="1"/></svg>
+      Analytics
+    </div>
+    <div class="nav-item" onclick="showPage('budgets',this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/><circle cx="12" cy="12" r="4"/><path d="M12 8v4l3 3"/></svg>
+      Budgets
+    </div>
+    <div class="nav-item" style="opacity:.55;cursor:default">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M12 13v2M10 17h4"/></svg>
+      AI Advisor <span class="soon-pill">Soon</span>
+    </div>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="month-switcher">
+      <span class="month-label" id="monthLabel">June 2026</span>
+      <div class="month-nav-btns">
+        <div class="mnav" onclick="changeMonth(-1)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+        <div class="mnav" onclick="changeMonth(1)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+    </div>
+    <button class="btn-add" onclick="openModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add expense
+    </button>
+  </div>
+</div>
+
+<!-- TOPBAR mobile -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="logo-icon">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/><circle cx="16" cy="14" r="2" fill="#fff" stroke="none"/></svg>
+    </div>
+    <div class="logo-name">FinMind</div>
+  </div>
+  <div class="topbar-right">
+    <div class="icon-btn" onclick="toggleSidebar()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </div>
+    <div class="icon-btn green" onclick="openModal()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <div class="main-header">
+      <div>
+        <div class="greeting-text" id="greetingText">Good morning</div>
+        <div class="greeting-sub" id="greetingSubText">June 2026</div>
+      </div>
+      <div class="budget-bar-wrap">
+        <div class="budget-bar-label">Budget used</div>
+        <div class="budget-track"><div class="budget-fill" id="budgetFillBar" style="width:0%"></div></div>
+        <div class="budget-pct" id="budgetPctLabel">0%</div>
+      </div>
+    </div>
+    <div class="body-content">
+      <div id="setupBanner" class="setup-banner" style="display:none">
+        <div class="setup-text">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Set your monthly budget to track how much you have left.
+        </div>
+        <button class="btn-setup" onclick="showPage('budgets',null)">Set budget</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total spent</div>
+          <div class="stat-value red" id="statSpent">₹0</div>
+          <div class="stat-trend up" id="statTrend">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            <span id="statTrendText">No data yet</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Remaining</div>
+          <div class="stat-value green" id="statRemaining">—</div>
+          <div class="stat-trend" id="statRemainingTrend">Set a budget to track</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Daily average</div>
+          <div class="stat-value" id="statDaily">₹0</div>
+          <div class="stat-trend" id="statTransactions">0 transactions</div>
+        </div>
+      </div>
+      <div class="mid-row">
+        <div class="card">
+          <div class="card-title">Category budgets</div>
+          <div id="catBudgetBars"><div class="tl-empty">Add expenses to see category breakdown</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Spending timeline</div>
+          <div id="timeline"><div class="tl-empty">No expenses this month yet</div></div>
+        </div>
+      </div>
+      <div class="expense-list">
+        <div class="el-header">
+          <div class="el-title">Recent expenses</div>
+          <div class="filter-tabs" id="filterTabs">
+            <div class="ftab active" onclick="filterExpenses('all',this)">All</div>
+            <div class="ftab" onclick="filterExpenses('food',this)">Food</div>
+            <div class="ftab" onclick="filterExpenses('transport',this)">Transport</div>
+            <div class="ftab" onclick="filterExpenses('bills',this)">Bills</div>
+            <div class="ftab" onclick="filterExpenses('shopping',this)">Shopping</div>
+          </div>
+        </div>
+        <div class="et-head">
+          <span></span><span style="padding-left:8px">Name</span><span style="padding-left:8px">Category</span><span style="padding-left:8px">Date</span><span style="text-align:right;padding-right:8px">Amount</span><span></span>
+        </div>
+        <div id="expenseTableBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPENSES PAGE -->
+  <div id="page-expenses" class="page">
+    <div class="main-header">
+      <div>
+        <div class="greeting-text">All expenses</div>
+        <div class="greeting-sub" id="expPageSub">All transactions</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="export-btn" onclick="exportCSV()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+        <button class="btn-add" style="width:auto;padding:8px 16px" onclick="openModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add
+        </button>
+      </div>
+    </div>
+    <div class="body-content">
+      <div class="expense-list">
+        <div class="el-header">
+          <div class="el-title">All transactions</div>
+          <div class="filter-tabs">
+            <div class="ftab active" onclick="filterExpensesPage('all',this)">All</div>
+            <div class="ftab" onclick="filterExpensesPage('food',this)">Food</div>
+            <div class="ftab" onclick="filterExpensesPage('transport',this)">Transport</div>
+            <div class="ftab" onclick="filterExpensesPage('bills',this)">Bills</div>
+            <div class="ftab" onclick="filterExpensesPage('shopping',this)">Shopping</div>
+            <div class="ftab" onclick="filterExpensesPage('health',this)">Health</div>
+            <div class="ftab" onclick="filterExpensesPage('education',this)">Education</div>
+            <div class="ftab" onclick="filterExpensesPage('fun',this)">Fun</div>
+            <div class="ftab" onclick="filterExpensesPage('other',this)">Other</div>
+          </div>
+        </div>
+        <div class="et-head">
+          <span></span><span style="padding-left:8px">Name</span><span style="padding-left:8px">Category</span><span style="padding-left:8px">Date</span><span style="text-align:right;padding-right:8px">Amount</span><span></span>
+        </div>
+        <div id="expensesPageBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS PAGE -->
+  <div id="page-analytics" class="page">
+    <div class="main-header">
+      <div>
+        <div class="greeting-text">Analytics</div>
+        <div class="greeting-sub" id="analyticsSubText">Spending insights</div>
+      </div>
+    </div>
+    <div class="body-content">
+      <div class="analytics-grid">
+        <div class="chart-card"><div class="card-title">Spending by category</div><div class="chart-wrap"><canvas id="doughnutChart"></canvas></div></div>
+        <div class="chart-card"><div class="card-title">Daily spending this month</div><div class="chart-wrap"><canvas id="barChart"></canvas></div></div>
+      </div>
+      <div class="card"><div class="card-title">Insights</div><div id="insightsContent" style="font-size:13px;color:var(--text-2);line-height:1.7">Add expenses to see insights.</div></div>
+    </div>
+  </div>
+
+  <!-- BUDGETS PAGE -->
+  <div id="page-budgets" class="page">
+    <div class="main-header">
+      <div><div class="greeting-text">Budgets</div><div class="greeting-sub">Set monthly spending limits</div></div>
+    </div>
+    <div class="body-content">
+      <div class="card">
+        <div class="card-title">Monthly total budget (₹)</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
+          <input type="number" id="totalBudgetInput" placeholder="e.g. 25000" style="flex:1;font-size:14px;padding:0 12px;height:38px;border-radius:8px;border:0.5px solid var(--border-md);background:var(--bg);color:var(--text);outline:none;font-family:inherit">
+          <button onclick="saveTotalBudget()" style="padding:0 16px;height:38px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Save</button>
+        </div>
+        <div class="card-title" style="margin-bottom:10px">Per-category limits (₹)</div>
+        <div id="categoryBudgetInputs"></div>
+        <button onclick="saveCategoryBudgets()" style="margin-top:12px;padding:10px 20px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;width:100%">Save all budgets</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ADD EXPENSE MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Add new expense</div>
+      <button class="modal-close" onclick="closeModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="field"><label>Expense name</label><input type="text" id="expName" placeholder="e.g. Grocery, Petrol, Netflix…" autocomplete="off"></div>
+    <div class="field"><label>Amount (₹)</label><input type="number" id="expAmount" placeholder="0" min="0" inputmode="decimal"></div>
+    <div class="field"><label>Date</label><input type="date" id="expDate"></div>
+    <div class="field" style="margin-bottom:8px"><label>Category</label></div>
+    <div class="cat-grid" id="catGrid"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveExpense()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Save expense
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    </div>
+    <div class="confirm-title">Delete expense?</div>
+    <div class="confirm-sub">This cannot be undone.</div>
+    <div class="confirm-btns">
+      <button class="btn-no" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-yes" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toastMsg">Saved</span>
+</div>
+
+<!-- PWA INSTALL BANNER -->
+<div class="install-banner" id="installBanner">
+  <div class="install-banner-text">
+    <div class="install-banner-title">Install FinMind</div>
+    <div class="install-banner-sub">Add to homescreen for the full app experience</div>
+  </div>
+  <div class="install-banner-btns">
+    <button class="btn-install" onclick="installApp()">Install</button>
+    <button class="btn-dismiss" onclick="dismissInstall()">✕</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV mobile -->
+<div class="bottom-nav">
+  <button class="bnav-item active" id="bn-dashboard" onclick="showPage('dashboard',null);setBottomNav('dashboard')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+    Home
+  </button>
+  <button class="bnav-item" id="bn-expenses" onclick="showPage('expenses',null);setBottomNav('expenses')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg>
+    Expenses
+  </button>
+  <button class="bnav-item" id="bn-analytics" onclick="showPage('analytics',null);setBottomNav('analytics')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="4" width="4" height="17" rx="1"/></svg>
+    Analytics
+  </button>
+  <button class="bnav-item" id="bn-budgets" onclick="showPage('budgets',null);setBottomNav('budgets')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2 2"/></svg>
+    Budgets
+  </button>
+</div>
+
+<script src="finmind.js"></script>
+</body>
+</html>
