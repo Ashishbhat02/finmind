@@ -253,10 +253,13 @@ body,.sidebar,.topbar,.card,.stat-card,.chart-card,.modal,.confirm-box,.et-row,.
 .confirm-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
 .confirm-sub{font-size:13px;color:var(--text-2);margin-bottom:20px}
 .confirm-btns{display:flex;gap:8px}
+.confirm-btns-col{display:flex;flex-direction:column;gap:8px}
 .btn-no{flex:1;padding:9px;border-radius:var(--radius-sm);border:0.5px solid var(--border-md);background:transparent;font-size:13px;font-weight:500;color:var(--text-2);cursor:pointer;font-family:inherit}
 .btn-yes{flex:1;padding:9px;border-radius:var(--radius-sm);border:none;background:var(--danger);font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit}
+.btn-yes-outline{padding:9px;border-radius:var(--radius-sm);border:0.5px solid var(--danger);background:transparent;font-size:13px;font-weight:700;color:var(--danger);cursor:pointer;font-family:inherit}
 .btn-no:hover{background:var(--bg)}
 .btn-yes:hover{background:#a93226}
+.btn-yes-outline:hover{background:var(--danger-bg)}
 
 /* PWA INSTALL BANNER */
 .install-banner{display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--green-deep);color:#fff;border-radius:var(--radius-lg);padding:12px 18px;z-index:250;align-items:center;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.28);max-width:360px;width:calc(100% - 40px);animation:slideUp .3s ease}

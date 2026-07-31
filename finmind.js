@@ -9,7 +9,7 @@
    let authMode = 'signin'; // 'signin' | 'signup'
    
    /* ── DATA ── */
-   let state = { expenses: [], budgets: { total: 0, food: 0, transport: 0, bills: 0, shopping: 0, health: 0, education: 0, fun: 0, other: 0 }, customCategories: [], currentMonth: new Date().getMonth(), currentYear: new Date().getFullYear() };
+   let state = { expenses: [], budgets: { total: 0, food: 0, transport: 0, bills: 0, shopping: 0, health: 0, education: 0, fun: 0, other: 0 }, customCategories: [], categoryOverrides: {}, hiddenCategories: [], currentMonth: new Date().getMonth(), currentYear: new Date().getFullYear() };
    
    const CAT_LABELS = { food: 'Food', transport: 'Transport', bills: 'Bills', shopping: 'Shopping', health: 'Health', education: 'Education', fun: 'Fun', other: 'Other' };
    const CAT_EMOJIS = { food: '🍽️', transport: '🚗', bills: '💡', shopping: '🛍️', health: '❤️', education: '📚', fun: '🎮', other: '•••' };
@@ -36,8 +36,12 @@
        if (settingsRow) {
            state.budgets = { ...state.budgets, ...(settingsRow.budgets || {}) };
            state.customCategories = settingsRow.custom_categories || [];
+           state.categoryOverrides = settingsRow.category_overrides || {};
+           state.hiddenCategories = settingsRow.hidden_categories || [];
        } else {
            state.customCategories = [];
+           state.categoryOverrides = {};
+           state.hiddenCategories = [];
            await sb.from('settings').insert({ user_id: currentUser.id, budgets: state.budgets, custom_categories: [] });
        }
        ensureBudgetEntries();
@@ -45,7 +49,7 @@
        render();
    }
    async function syncSettings() {
-       const { error } = await sb.from('settings').upsert({ user_id: currentUser.id, budgets: state.budgets, custom_categories: state.customCategories, updated_at: new Date().toISOString() });
+       const { error } = await sb.from('settings').upsert({ user_id: currentUser.id, budgets: state.budgets, custom_categories: state.customCategories, category_overrides: state.categoryOverrides, hidden_categories: state.hiddenCategories, updated_at: new Date().toISOString() });
        if (error) { console.error(error); showToast('Could not save settings'); }
    }
    
@@ -99,21 +103,25 @@
    async function signOut() {
        await sb.auth.signOut();
        currentUser = null;
-       state.expenses = []; state.customCategories = [];
+       state.expenses = []; state.customCategories = []; state.categoryOverrides = {}; state.hiddenCategories = [];
        ensureBudgetEntries();
        document.getElementById('authOverlay').classList.add('open');
    }
    function getCategoryKeys() {
-       const keys = ['food', 'transport', 'bills', 'shopping', 'health', 'education', 'fun', 'other'];
+       const keys = ['food', 'transport', 'bills', 'shopping', 'health', 'education', 'fun', 'other'].filter(k => !(state.hiddenCategories || []).includes(k));
        (state.customCategories || []).forEach(c => { if (!keys.includes(c.key)) keys.push(c.key); });
        return keys;
    }
    function getCategoryLabel(cat) {
+       const override = (state.categoryOverrides || {})[cat];
+       if (override && override.name) return override.name;
        if (CAT_LABELS[cat]) return CAT_LABELS[cat];
        const custom = (state.customCategories || []).find(c => c.key === cat);
        return custom ? custom.name : cat;
    }
    function getCategoryEmoji(cat) {
+       const override = (state.categoryOverrides || {})[cat];
+       if (override && override.emoji) return override.emoji;
        if (CAT_EMOJIS[cat]) return CAT_EMOJIS[cat];
        const custom = (state.customCategories || []).find(c => c.key === cat);
        return custom ? custom.emoji : '🧾';
@@ -160,8 +168,8 @@
        document.getElementById('expAmount').value = existing ? existing.amount : '';
        document.getElementById('expDate').value = existing ? existing.date : new Date().toISOString().split('T')[0];
        document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('sel'));
-       const catToSelect = existing ? existing.cat : 'food';
-       const chip = document.querySelector(`.cat-chip[data-cat="${catToSelect}"]`) || document.querySelector('.cat-chip[data-cat="food"]');
+       const catToSelect = existing ? existing.cat : getCategoryKeys()[0];
+       const chip = document.querySelector(`.cat-chip[data-cat="${catToSelect}"]`) || document.querySelector('.cat-chip');
        if (chip) chip.classList.add('sel');
        setTimeout(() => document.getElementById('expName').focus(), 50);
    }
@@ -465,14 +473,13 @@
        document.getElementById('totalBudgetInput').value = state.budgets.total || '';
        const cats = getCategoryKeys();
        document.getElementById('categoryBudgetInputs').innerHTML = cats.map(c => {
-           const custom = (state.customCategories || []).find(cc => cc.key === c);
-           if (custom && editingCategoryKey === c) {
+           if (editingCategoryKey === c && c !== 'other') {
                return `
        <div class="budget-field-edit">
          <div class="budget-field-edit-title">Editing "${getCategoryLabel(c)}"</div>
          <div class="budget-field-edit-row">
-           <input type="text" id="editCatEmoji_${c}" value="${custom.emoji || '🧾'}" maxlength="4" class="cat-emoji-input">
-           <input type="text" id="editCatName_${c}" value="${custom.name}" placeholder="Category name" autocomplete="off">
+           <input type="text" id="editCatEmoji_${c}" value="${getCategoryEmoji(c)}" maxlength="4" class="cat-emoji-input">
+           <input type="text" id="editCatName_${c}" value="${getCategoryLabel(c)}" placeholder="Category name" autocomplete="off">
          </div>
          <div class="budget-field-edit-actions">
            <button onclick="saveCategoryEdit('${c}')" class="cat-edit-save">Save</button>
@@ -483,7 +490,7 @@
            return `
        <div class="budget-field">
          <label><span style="font-size:15px">${getCategoryEmoji(c)}</span> ${getCategoryLabel(c)}</label>
-         <input type="number" id="budget_${c}" value="${state.budgets[c] || ''}" placeholder="No limit" min="0">${custom ? `
+         <input type="number" id="budget_${c}" value="${state.budgets[c] || ''}" placeholder="No limit" min="0">${c !== 'other' ? `
          <span class="cat-icon-btn" onclick="editCategory('${c}')" title="Edit category">✏️</span>
          <span class="cat-icon-btn cat-icon-btn-danger" onclick="deleteCategory('${c}')" title="Delete category">🗑️</span>` : ''}
        </div>`;
@@ -508,24 +515,60 @@
        const name = document.getElementById('editCatName_' + key).value.trim();
        if (!name) { showToast('Enter a category name'); return }
        const custom = (state.customCategories || []).find(c => c.key === key);
-       if (!custom) return;
-       custom.name = name; custom.emoji = emoji;
+       if (custom) {
+           custom.name = name; custom.emoji = emoji;
+       } else {
+           state.categoryOverrides = state.categoryOverrides || {};
+           state.categoryOverrides[key] = { name, emoji };
+       }
        editingCategoryKey = null;
        await syncSettings(); renderBudgetPage(); render(); showToast('Category updated');
    }
-   async function deleteCategory(key) {
-       const custom = (state.customCategories || []).find(c => c.key === key);
-       if (!custom) return;
-       const hasExpenses = state.expenses.some(e => e.cat === key);
-       const msg = hasExpenses ? `Delete "${custom.name}"? Its expenses will be moved to "Other".` : `Delete "${custom.name}"?`;
-       if (!confirm(msg)) return;
-       if (hasExpenses) {
+   
+   /* ── DELETE CATEGORY (default or custom) ── */
+   let categoryPendingDelete = null;
+   function deleteCategory(key) {
+       categoryPendingDelete = key;
+       const label = getCategoryLabel(key);
+       const count = state.expenses.filter(e => e.cat === key).length;
+       document.getElementById('catDeleteTitle').textContent = `Delete "${label}"?`;
+       const moveBtn = document.getElementById('catDeleteMoveBtn');
+       const permBtn = document.getElementById('catDeletePermBtn');
+       if (count > 0) {
+           document.getElementById('catDeleteSub').textContent = `${count} expense${count !== 1 ? 's' : ''} ${count !== 1 ? 'are' : 'is'} logged under this category. Choose what to do with ${count !== 1 ? 'them' : 'it'}.`;
+           moveBtn.style.display = '';
+           moveBtn.textContent = `Move to "Other"`;
+           permBtn.textContent = `Delete expense${count !== 1 ? 's' : ''} too`;
+       } else {
+           document.getElementById('catDeleteSub').textContent = 'This cannot be undone.';
+           moveBtn.style.display = 'none';
+           permBtn.textContent = 'Delete category';
+       }
+       document.getElementById('catDeleteOverlay').classList.add('open');
+   }
+   function closeCatDeleteOverlay() { categoryPendingDelete = null; document.getElementById('catDeleteOverlay').classList.remove('open'); }
+   async function resolveCategoryDelete(mode) {
+       const key = categoryPendingDelete;
+       if (!key) return;
+       closeCatDeleteOverlay();
+       if (mode === 'move') {
            const { error } = await sb.from('expenses').update({ cat: 'other' }).eq('cat', key);
            if (error) { console.error(error); showToast('Could not reassign expenses'); return }
            state.expenses.forEach(e => { if (e.cat === key) e.cat = 'other' });
+       } else if (mode === 'delete') {
+           const { error } = await sb.from('expenses').delete().eq('cat', key);
+           if (error) { console.error(error); showToast('Could not delete expenses'); return }
+           state.expenses = state.expenses.filter(e => e.cat !== key);
        }
-       state.customCategories = state.customCategories.filter(c => c.key !== key);
-       delete state.budgets[key];
+       const isCustom = (state.customCategories || []).some(c => c.key === key);
+       if (isCustom) {
+           state.customCategories = state.customCategories.filter(c => c.key !== key);
+           delete state.budgets[key];
+       } else {
+           state.hiddenCategories = state.hiddenCategories || [];
+           if (!state.hiddenCategories.includes(key)) state.hiddenCategories.push(key);
+       }
+       if (state.categoryOverrides) delete state.categoryOverrides[key];
        editingCategoryKey = null;
        await syncSettings(); renderBudgetPage(); render(); showToast('Category deleted');
    }
@@ -620,7 +663,7 @@
    function exportCSV() {
        const exps = currentMonthExpenses();
        if (!exps.length) { showToast('No expenses to export'); return }
-       const blob = new Blob(['Name,Category,Amount (₹),Date\n' + exps.map(e => `"${e.name}","${CAT_LABELS[e.cat]}",${e.amount},"${fmtDateFull(e.date)}"`).join('\n')], { type: 'text/csv' });
+       const blob = new Blob(['Name,Category,Amount (₹),Date\n' + exps.map(e => `"${e.name}","${getCategoryLabel(e.cat)}",${e.amount},"${fmtDateFull(e.date)}"`).join('\n')], { type: 'text/csv' });
        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `FinMind_${MONTHS[state.currentMonth]}_${state.currentYear}.csv`; a.click();
        showToast('CSV exported');
    }
