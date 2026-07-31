@@ -123,7 +123,13 @@
     <div class="main-header">
       <div>
         <div class="greeting-text" id="greetingText">Good morning</div>
-        <div class="greeting-sub" id="greetingSubText">June 2026</div>
+        <div class="greeting-date-wrap">
+          <div class="greeting-sub greeting-sub-trigger" id="greetingDateTrigger" onclick="toggleMonthDropdown()">
+            <span id="greetingSubText">June 2026</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="month-dropdown" id="monthDropdown"></div>
+        </div>
       </div>
       <div class="budget-bar-wrap">
         <div class="budget-bar-label">Budget used</div>

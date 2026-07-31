@@ -45,3 +45,5 @@ create policy "Users can insert own settings" on public.settings
 
 create policy "Users can update own settings" on public.settings
   for update using (auth.uid() = user_id);
+
+
