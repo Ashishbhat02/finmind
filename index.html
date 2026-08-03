@@ -178,12 +178,26 @@
       <div class="expense-list">
         <div class="el-header">
           <div class="el-title">Recent expenses</div>
+          <div class="date-filter-wrap">
+            <div class="date-filter-trigger" id="dashDateFilterTrigger" onclick="toggleDateFilterMenu('dash')">
+              <span>📅</span><span id="dashDateFilterLabel">This month</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="date-filter-menu" id="dashDateFilterMenu">
+              <div class="dfm-item" onclick="chooseDateFilter('dash','current')">This month</div>
+              <div class="dfm-item" onclick="chooseDateFilter('dash','all')">All time</div>
+              <div class="dfm-item" onclick="chooseDateFilter('dash','date')">Specific date</div>
+              <div class="dfm-item" onclick="chooseDateFilter('dash','month')">Specific month</div>
+              <div class="dfm-picker" id="dashDatePickerWrap" style="display:none">
+                <input type="date" id="dashDatePickerInput" onchange="applyDatePickerChange('dash')">
+              </div>
+              <div class="dfm-picker" id="dashMonthPickerWrap" style="display:none">
+                <input type="month" id="dashMonthPickerInput" onchange="applyMonthPickerChange('dash')">
+              </div>
+            </div>
+          </div>
           <div class="filter-tabs" id="filterTabs">
             <div class="ftab active" onclick="filterExpenses('all',this)">All</div>
-            <div class="ftab" onclick="filterExpenses('food',this)">Food</div>
-            <div class="ftab" onclick="filterExpenses('transport',this)">Transport</div>
-            <div class="ftab" onclick="filterExpenses('bills',this)">Bills</div>
-            <div class="ftab" onclick="filterExpenses('shopping',this)">Shopping</div>
           </div>
         </div>
         <div class="et-head">
@@ -216,16 +230,26 @@
       <div class="expense-list">
         <div class="el-header">
           <div class="el-title">All transactions</div>
-          <div class="filter-tabs">
+          <div class="date-filter-wrap">
+            <div class="date-filter-trigger" id="pageDateFilterTrigger" onclick="toggleDateFilterMenu('page')">
+              <span>📅</span><span id="pageDateFilterLabel">This month</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="date-filter-menu" id="pageDateFilterMenu">
+              <div class="dfm-item" onclick="chooseDateFilter('page','current')">This month</div>
+              <div class="dfm-item" onclick="chooseDateFilter('page','all')">All time</div>
+              <div class="dfm-item" onclick="chooseDateFilter('page','date')">Specific date</div>
+              <div class="dfm-item" onclick="chooseDateFilter('page','month')">Specific month</div>
+              <div class="dfm-picker" id="pageDatePickerWrap" style="display:none">
+                <input type="date" id="pageDatePickerInput" onchange="applyDatePickerChange('page')">
+              </div>
+              <div class="dfm-picker" id="pageMonthPickerWrap" style="display:none">
+                <input type="month" id="pageMonthPickerInput" onchange="applyMonthPickerChange('page')">
+              </div>
+            </div>
+          </div>
+          <div class="filter-tabs" id="filterTabsPage">
             <div class="ftab active" onclick="filterExpensesPage('all',this)">All</div>
-            <div class="ftab" onclick="filterExpensesPage('food',this)">Food</div>
-            <div class="ftab" onclick="filterExpensesPage('transport',this)">Transport</div>
-            <div class="ftab" onclick="filterExpensesPage('bills',this)">Bills</div>
-            <div class="ftab" onclick="filterExpensesPage('shopping',this)">Shopping</div>
-            <div class="ftab" onclick="filterExpensesPage('health',this)">Health</div>
-            <div class="ftab" onclick="filterExpensesPage('education',this)">Education</div>
-            <div class="ftab" onclick="filterExpensesPage('fun',this)">Fun</div>
-            <div class="ftab" onclick="filterExpensesPage('other',this)">Other</div>
           </div>
         </div>
         <div class="et-head">

@@ -142,6 +142,18 @@ body,.sidebar,.topbar,.card,.stat-card,.chart-card,.modal,.confirm-box,.et-row,.
 .el-title{font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em}
 .filter-tabs{display:flex;gap:4px;flex-wrap:wrap}
 .ftab{font-size:11px;padding:4px 10px;border-radius:6px;border:0.5px solid var(--border);color:var(--text-2);cursor:pointer;background:var(--surface);transition:all .15s;white-space:nowrap}
+.date-filter-wrap{position:relative}
+.date-filter-trigger{display:flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:6px;border:0.5px solid var(--border-md);color:var(--text-2);background:var(--surface);cursor:pointer;white-space:nowrap;user-select:none}
+.date-filter-trigger:hover{border-color:var(--green)}
+.date-filter-trigger svg{color:var(--green);flex-shrink:0;transition:transform .15s}
+.date-filter-trigger.open svg{transform:rotate(180deg)}
+.date-filter-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:170px;background:var(--surface);border:0.5px solid var(--border-md);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,0.18);z-index:120;padding:6px}
+.date-filter-menu.open{display:block}
+.dfm-item{font-size:12px;color:var(--text-2);padding:7px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.dfm-item:hover{background:var(--bg)}
+.dfm-picker{padding:6px 6px 2px}
+.dfm-picker input{width:100%;font-size:12px;padding:6px 8px;border-radius:6px;border:0.5px solid var(--border-md);background:var(--bg);color:var(--text);outline:none;font-family:inherit}
+.dfm-picker input:focus{border-color:var(--green)}
 .ftab.active{background:var(--green-light);color:var(--green-dark);border-color:var(--green-mid);font-weight:600}
 .ftab:hover:not(.active){background:var(--bg)}
 .et-head{display:grid;grid-template-columns:32px 1fr 92px 80px 64px 28px 28px;padding:8px 16px;border-bottom:0.5px solid var(--border);background:var(--bg)}
@@ -151,6 +163,7 @@ body,.sidebar,.topbar,.card,.stat-card,.chart-card,.modal,.confirm-box,.et-row,.
 .et-row:hover{background:var(--bg)}
 .et-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .et-name{font-size:13px;font-weight:500;color:var(--text);padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.et-date-mobile{display:none;font-size:11px;font-weight:400;color:var(--text-3);margin-top:2px;white-space:nowrap}
 .et-cat{padding:0 8px}
 .cat-pill{font-size:10px;padding:3px 8px;border-radius:99px;white-space:nowrap}
 .et-date{font-size:11px;color:var(--text-2);padding:0 8px}
@@ -291,6 +304,7 @@ body,.sidebar,.topbar,.card,.stat-card,.chart-card,.modal,.confirm-box,.et-row,.
   .et-head{display:none}
   .et-row{grid-template-columns:32px 1fr 64px 28px 28px}
   .et-cat,.et-date{display:none}
+  .et-date-mobile{display:block}
   .budget-bar-wrap{display:none}
   .analytics-grid{grid-template-columns:1fr}
   .bottom-nav{display:flex}

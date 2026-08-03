@@ -262,13 +262,114 @@
    /* ── FILTERS ── */
    function filterExpenses(cat, el) { activeFilter = cat; document.querySelectorAll('#filterTabs .ftab').forEach(t => t.classList.remove('active')); el.classList.add('active'); renderExpenseTable() }
    function filterExpensesPage(cat, el) { activeFilterPage = cat; el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active')); el.classList.add('active'); renderExpensesPage() }
+   function renderCatFilterTabs(containerId, activeCat, handlerName) {
+       const el = document.getElementById(containerId);
+       if (!el) return;
+       const cats = getCategoryKeys();
+       el.innerHTML = `<div class="ftab${activeCat === 'all' ? ' active' : ''}" onclick="${handlerName}('all',this)">All</div>` +
+           cats.map(c => `<div class="ftab${activeCat === c ? ' active' : ''}" onclick="${handlerName}('${c}',this)">${getCategoryLabel(c)}</div>`).join('');
+   }
+   
+   /* ── SECTION DATE FILTER (dashboard + expenses page lists) ── */
+   let dashDateMode = 'current', dashDateDate = null, dashDateMonth = null;
+   let pageDateMode = 'current', pageDateDate = null, pageDateMonth = null;
+   function dateFilterState(scope) {
+       return scope === 'dash'
+           ? { mode: dashDateMode, date: dashDateDate, month: dashDateMonth }
+           : { mode: pageDateMode, date: pageDateDate, month: pageDateMonth };
+   }
+   function setDateFilterState(scope, mode, date, month) {
+       if (scope === 'dash') { dashDateMode = mode; dashDateDate = date; dashDateMonth = month; }
+       else { pageDateMode = mode; pageDateDate = date; pageDateMonth = month; }
+   }
+   function filteredExpensesByDate(scope) {
+       const { mode, date, month } = dateFilterState(scope);
+       if (mode === 'all') return state.expenses;
+       if (mode === 'date' && date) return state.expenses.filter(e => e.date === date);
+       if (mode === 'month' && month) return state.expenses.filter(e => e.monthKey === month);
+       return currentMonthExpenses();
+   }
+   function dateFilterLabel(scope) {
+       const { mode, date, month } = dateFilterState(scope);
+       if (mode === 'all') return 'All time';
+       if (mode === 'date' && date) return fmtDateFull(date);
+       if (mode === 'month' && month) { const [y, m] = month.split('-'); return `${MONTHS[parseInt(m, 10) - 1]} ${y}`; }
+       return `${MONTHS[state.currentMonth]} ${state.currentYear}`;
+   }
+   function updateDateFilterLabels() {
+       const dashLabel = document.getElementById('dashDateFilterLabel');
+       if (dashLabel) dashLabel.textContent = dateFilterLabel('dash');
+       const pageLabel = document.getElementById('pageDateFilterLabel');
+       if (pageLabel) pageLabel.textContent = dateFilterLabel('page');
+   }
+   function toggleDateFilterMenu(scope) {
+       const menu = document.getElementById(scope + 'DateFilterMenu');
+       const trigger = document.getElementById(scope + 'DateFilterTrigger');
+       if (!menu) return;
+       const willOpen = !menu.classList.contains('open');
+       document.querySelectorAll('.date-filter-menu.open').forEach(m => m.classList.remove('open'));
+       document.querySelectorAll('.date-filter-trigger.open').forEach(t => t.classList.remove('open'));
+       if (willOpen) { menu.classList.add('open'); if (trigger) trigger.classList.add('open'); }
+   }
+   function chooseDateFilter(scope, mode) {
+       if (mode === 'date') {
+           document.getElementById(scope + 'DatePickerWrap').style.display = 'block';
+           document.getElementById(scope + 'MonthPickerWrap').style.display = 'none';
+           const input = document.getElementById(scope + 'DatePickerInput');
+           input.value = dateFilterState(scope).date || new Date().toISOString().split('T')[0];
+           input.focus();
+           return;
+       }
+       if (mode === 'month') {
+           document.getElementById(scope + 'MonthPickerWrap').style.display = 'block';
+           document.getElementById(scope + 'DatePickerWrap').style.display = 'none';
+           const input = document.getElementById(scope + 'MonthPickerInput');
+           input.value = dateFilterState(scope).month || monthKey(state.currentYear, state.currentMonth);
+           input.focus();
+           return;
+       }
+       document.getElementById(scope + 'DatePickerWrap').style.display = 'none';
+       document.getElementById(scope + 'MonthPickerWrap').style.display = 'none';
+       setDateFilterState(scope, mode, null, null);
+       applyDateFilter(scope);
+   }
+   function applyDatePickerChange(scope) {
+       const val = document.getElementById(scope + 'DatePickerInput').value;
+       if (!val) return;
+       setDateFilterState(scope, 'date', val, null);
+       applyDateFilter(scope);
+   }
+   function applyMonthPickerChange(scope) {
+       const val = document.getElementById(scope + 'MonthPickerInput').value;
+       if (!val) return;
+       setDateFilterState(scope, 'month', null, val);
+       applyDateFilter(scope);
+   }
+   function applyDateFilter(scope) {
+       updateDateFilterLabels();
+       const menu = document.getElementById(scope + 'DateFilterMenu');
+       const trigger = document.getElementById(scope + 'DateFilterTrigger');
+       if (menu) menu.classList.remove('open');
+       if (trigger) trigger.classList.remove('open');
+       if (scope === 'dash') renderExpenseTable(); else renderExpensesPage();
+   }
+   document.addEventListener('click', e => {
+       document.querySelectorAll('.date-filter-menu.open').forEach(menu => {
+           const wrap = menu.closest('.date-filter-wrap');
+           if (wrap && !wrap.contains(e.target)) {
+               menu.classList.remove('open');
+               const trigger = wrap.querySelector('.date-filter-trigger');
+               if (trigger) trigger.classList.remove('open');
+           }
+       });
+   });
    
    /* ── EXPENSE ROW ── */
    function expRowHTML(e) {
        const catClass = getCategoryClass(e.cat);
        return `<div class="et-row">
        <div class="et-icon ${catClass}" style="font-size:14px">${getCategoryEmoji(e.cat)}</div>
-       <div class="et-name" title="${e.name}">${e.name}</div>
+       <div class="et-name" title="${e.name}">${e.name}<span class="et-date-mobile">${fmtDate(e.date)}</span></div>
        <div class="et-cat"><span class="cat-pill ${catClass}">${getCategoryLabel(e.cat)}</span></div>
        <div class="et-date">${fmtDateFull(e.date)}</div>
        <div class="et-amt">${fmt(e.amount)}</div>
@@ -284,8 +385,10 @@
    /* ── RENDER TABLE ── */
    function renderExpenseTable() {
        const body = document.getElementById('expenseTableBody');
-       let exps = currentMonthExpenses();
+       renderCatFilterTabs('filterTabs', activeFilter, 'filterExpenses');
+       let exps = filteredExpensesByDate('dash');
        if (activeFilter !== 'all') exps = exps.filter(e => e.cat === activeFilter);
+       updateDateFilterLabels();
        if (!exps.length) { body.innerHTML = `<div class="empty-state"><div class="empty-icon">💰</div><div class="empty-title">No expenses yet</div><div class="empty-sub">Tap "Add expense" to log your first one</div></div>`; return }
        body.innerHTML = exps.map(expRowHTML).join('');
    }
@@ -293,9 +396,11 @@
    /* ── RENDER EXPENSES PAGE ── */
    function renderExpensesPage() {
        const body = document.getElementById('expensesPageBody');
-       let exps = currentMonthExpenses();
+       renderCatFilterTabs('filterTabsPage', activeFilterPage, 'filterExpensesPage');
+       let exps = filteredExpensesByDate('page');
        if (activeFilterPage !== 'all') exps = exps.filter(e => e.cat === activeFilterPage);
-       document.getElementById('expPageSub').textContent = `${MONTHS[state.currentMonth]} ${state.currentYear} — ${exps.length} transaction${exps.length !== 1 ? 's' : ''}`;
+       updateDateFilterLabels();
+       document.getElementById('expPageSub').textContent = `${dateFilterLabel('page')} — ${exps.length} transaction${exps.length !== 1 ? 's' : ''}`;
        if (!exps.length) { body.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No expenses found</div><div class="empty-sub">Nothing logged for this filter yet</div></div>`; return }
        body.innerHTML = exps.map(expRowHTML).join('');
    }
