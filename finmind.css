@@ -1686,7 +1686,12 @@ body,
   }
 
   .bs-item {
-    padding: 10px
+    padding: 10px 8px
+  }
+
+  .bs-label {
+    font-size: 9px;
+    letter-spacing: .02em
   }
 
   .bs-value {
@@ -1695,6 +1700,10 @@ body,
 
   .bs-op {
     font-size: 13px
+  }
+
+  .budget-field label {
+    width: 92px
   }
 }
 
@@ -2228,7 +2237,12 @@ body,
   }
 
   .budget-bar-wrap {
-    display: none
+    width: 100%
+  }
+
+  .budget-track {
+    flex: 1;
+    width: auto
   }
 
   .analytics-grid {
@@ -2266,4 +2280,116 @@ body,
 ::-webkit-scrollbar-thumb {
   background: var(--border-md);
   border-radius: 2px
+}
+
+/* ── EXTRA RESPONSIVE FIXES (all devices) ── */
+.bs-label {
+  white-space: nowrap
+}
+
+.stat-breakdown {
+  display: none !important
+}
+
+.budget-field input {
+  min-width: 0
+}
+
+.analytics-grid>*,
+.mid-row>*,
+.stats-grid>*,
+.body-content>* {
+  min-width: 0
+}
+
+.chart-wrap canvas {
+  max-width: 100%
+}
+
+.main {
+  min-width: 0
+}
+
+/* very large screens: keep content readable instead of stretching edge to edge */
+@media(min-width:1500px) {
+  .body-content {
+    max-width: 1400px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto
+  }
+}
+
+/* phones: Total budget on top, Budget + Extra side by side below */
+@media(max-width:480px) {
+  .budget-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px
+  }
+
+  .bs-op {
+    display: none
+  }
+
+  .bs-total {
+    grid-column: 1/-1;
+    order: -1
+  }
+
+  .bs-item {
+    padding: 10px 12px
+  }
+
+  .bs-label {
+    font-size: 10px;
+    letter-spacing: .04em
+  }
+
+  .bs-value {
+    font-size: 16px
+  }
+}
+
+/* notched phones / home-indicator safe areas */
+@media(max-width:768px) {
+  .topbar {
+    height: calc(56px + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px)
+  }
+
+  .main {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px))
+  }
+
+  .bottom-nav {
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px)
+  }
+}
+
+/* short landscape phones */
+@media(max-height:430px) and (max-width:900px) {
+  .bnav-item {
+    flex-direction: row;
+    gap: 6px;
+    font-size: 11px
+  }
+}
+
+/* touch devices: comfortable tap targets */
+@media(hover:none) {
+
+  .et-edit,
+  .et-del,
+  .topup-del {
+    min-width: 32px;
+    min-height: 32px
+  }
+
+  .cat-icon-btn {
+    width: 34px;
+    height: 34px
+  }
 }
